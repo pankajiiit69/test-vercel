@@ -53,3 +53,31 @@ npm run migration:revert
 
 - `GET /` -> hello world response
 - `GET /users/check-db` -> checks DB access and returns users count
+
+## GitHub Actions Deploy to AWS ECS
+
+Workflow file: `.github/workflows/deploy-ecs.yml`
+
+Required repository Variables:
+
+- `AWS_REGION` (example: `ap-south-1`)
+- `ECR_REPOSITORY` (example: `nestjs-postgres-hello`)
+- `ECS_CLUSTER` (example: `prod-cluster`)
+- `ECS_SERVICE` (example: `nestjs-service`)
+- `ECS_TASK_DEFINITION_FAMILY` (example: `nestjs-task`)
+- `ECS_CONTAINER_NAME` (container name inside ECS task definition)
+
+Required repository Secret:
+
+- `AWS_ROLE_TO_ASSUME` (IAM Role ARN for GitHub OIDC)
+
+The workflow does this on push to `main`:
+
+1. Builds Docker image
+2. Pushes image to ECR
+3. Pulls current ECS task definition
+4. Registers and runs a one-off ECS task for `npm run migration:run`
+5. Replaces container image in service task definition
+6. Deploys updated task definition to ECS service
+
+For migration execution, ensure the ECS task definition has permissions and network access to reach the database.
