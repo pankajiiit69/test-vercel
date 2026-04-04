@@ -1,0 +1,6 @@
+-- DDL: users table
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  username VARCHAR(120) NOT NULL UNIQUE,
+  name VARCHAR(120) NOT NULL
+);
