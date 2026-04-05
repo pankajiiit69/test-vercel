@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { readFileSync } from 'fs';
 import { Logger } from '@nestjs/common';
 import { join } from 'path';
 import { DataSource, DataSourceOptions } from 'typeorm';
@@ -8,7 +9,47 @@ const dbLogger = new Logger('Database');
 
 let initializationPromise: Promise<DataSource> | null = null;
 
+type DbSslOptions = {
+  rejectUnauthorized: boolean;
+  ca?: string;
+};
+
+const loadCaFromPath = (filePath?: string): string | undefined => {
+  if (filePath && filePath.trim().length > 0) {
+    return readFileSync(filePath, 'utf8');
+  }
+
+  return undefined;
+};
+
+const resolveSslFromMode = (rawMode: string): false | DbSslOptions => {
+  const ca = loadCaFromPath(process.env.DB_SSL_CA_PATH);
+
+  const withCa = (rejectUnauthorized: boolean): DbSslOptions => ({
+    rejectUnauthorized,
+    ...(ca ? { ca } : {}),
+  });
+
+  switch (rawMode.toLowerCase()) {
+    case 'disable':
+      return false;
+    case 'verify-ca':
+    case 'verify-full':
+      return withCa(true);
+    case 'allow':
+    case 'prefer':
+    case 'require':
+    case 'no-verify':
+      return withCa(false);
+    default:
+      dbLogger.warn(`Unsupported DB_SSLMODE "${rawMode}". Falling back to "require".`);
+      return withCa(false);
+  }
+};
+
 export const buildTypeOrmOptions = (): DataSourceOptions => {
+  const dbSslMode = process.env.DB_SSLMODE || 'require';
+
   return {
     type: 'postgres',
     host: process.env.DB_HOST || 'localhost',
@@ -16,6 +57,7 @@ export const buildTypeOrmOptions = (): DataSourceOptions => {
     username: process.env.DB_USERNAME || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
     database: process.env.DB_NAME || 'postgres',
+    ssl: resolveSslFromMode(dbSslMode),
     entities: [User],
     migrations: [join(__dirname, 'migrations', '*.{ts,js}')],
     migrationsTableName: 'typeorm_migrations',

@@ -14,6 +14,9 @@ DB_USERNAME=postgres
 DB_PASSWORD=postgres
 DB_NAME=postgres
 DB_SYNCHRONIZE=false
+DB_SSLMODE=require
+# Optional for strict SSL verification (RDS CA bundle path)
+# DB_SSL_CA_PATH=/etc/ssl/rds-ca.pem
 ```
 
 ## Run
